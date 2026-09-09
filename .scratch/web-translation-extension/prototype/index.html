@@ -1,0 +1,10 @@
+<!doctype html>
+<!-- THROWAWAY PROTOTYPE: three below-original translation layouts on one simulated feed, ?variant=A/B/C. No API or persistence. -->
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>双语阅读 · 交互原型</title><link rel="stylesheet" href="prototype.css"></head>
+<body><main>
+<header><div><small>THROWAWAY PROTOTYPE · 模拟内容</small><h1>原文还在，阅读继续。</h1><p>对比三种原文下方的译文呈现方式。</p></div></header>
+<section class="controls" aria-label="演示控制"><label><input id="enabled" type="checkbox" checked> 此网站自动翻译</label><button id="theme" type="button">切换浅色</button><button id="replay" type="button">演示重新加载</button></section>
+<div class="layout"><section class="feed" aria-label="模拟帖子列表"><div class="feed-title">阅读流 <span>原文 EN → 简体中文</span></div><div id="posts"></div></section>
+<aside><h2 id="variant-name"></h2><p id="variant-note"></p><h3>实时演示状态</h3><output id="state" aria-live="polite"></output><h3>本次原型边界</h3><p>译文为预置示例，不调用 API。原文、链接与帖子操作区不变。</p><p>单块重试仅模拟成功；折叠不发起新请求；关闭开关移除译文。</p><p>长译文允许自然撑高页面，不覆盖原内容。真实网站的布局兼容性仍待验证。</p></aside></div>
+<nav class="switcher" aria-label="原型方案切换"><button id="prev" aria-label="上一个方案">←</button><span id="variant-label"></span><button id="next" aria-label="下一个方案">→</button></nav>
+</main><script src="prototype.js"></script></body></html>
