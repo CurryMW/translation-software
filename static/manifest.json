@@ -1,0 +1,11 @@
+{
+  "manifest_version": 3,
+  "name": "网页翻译（本地 MVP）",
+  "version": "0.0.3",
+  "minimum_chrome_version": "120",
+  "action": { "default_popup": "popup.html" },
+  "options_ui": { "page": "options.html", "open_in_tab": true },
+  "background": { "service_worker": "service-worker.js" },
+  "permissions": ["storage", "activeTab", "scripting", "webNavigation"],
+  "optional_host_permissions": ["http://*/*", "https://*/*"]
+}

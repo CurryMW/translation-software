@@ -1,0 +1,35 @@
+{
+  "name": "web-translation-extension",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "build": "tsx scripts/build.mts",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "manual:fixture": "node scripts/manual-fixture-server.mjs",
+    "install:playwright-browser": "playwright install --no-shell chromium",
+    "release:gate": "node --import tsx scripts/release-gate.mts",
+    "verify": "npm run typecheck && npm run build && npm run test && npm run test:e2e"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.54.2",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.0.1",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/chrome": "^0.0.268",
+    "@types/node": "^22.10.2",
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "esbuild": "^0.24.2",
+    "jsdom": "^25.0.1",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}

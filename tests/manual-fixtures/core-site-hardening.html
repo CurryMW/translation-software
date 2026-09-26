@@ -1,0 +1,41 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Core site hardening synthetic fixture</title>
+<style>
+  body { margin: 0; font: 16px/1.5 system-ui, sans-serif; }
+  main { display: grid; gap: 1rem; padding: 1rem; }
+  article, section, table { border: 1px solid #ccd; padding: .75rem; }
+  .offscreen { margin-top: 120vh; }
+</style>
+<main>
+  <!-- X-like virtual post: the data-testid is a semantic text container. -->
+  <section data-site-fixture="x">
+    <article data-fixture-id="x-post">
+      <div data-testid="tweetText" data-fixture-id="x-text">A synthetic timeline post with readable text.</div>
+      <div data-testid="User-Name"><span data-username="synthetic-user">synthetic-user</span></div>
+      <button data-testid="bookmark">Bookmark</button>
+    </article>
+  </section>
+
+  <!-- Wikipedia-like article: inline links remain excluded from the prose. -->
+  <section data-site-fixture="wikipedia">
+    <h1 data-fixture-id="wiki-title">A synthetic encyclopedia heading</h1>
+    <p data-fixture-id="wiki-paragraph">A paragraph with <a href="#synthetic">an excluded inline link</a> and readable prose.</p>
+  </section>
+
+  <!-- GitHub-like discussion: markdown prose is eligible, pre/code is not. -->
+  <section data-site-fixture="github">
+    <h2 data-fixture-id="github-title">A synthetic discussion title</h2>
+    <div class="markdown-body" data-fixture-id="github-body">
+      <p data-fixture-id="github-prose">A discussion paragraph with <code>inline_code()</code> kept outside the prose boundary.</p>
+      <pre data-fixture-id="github-code"><code>const synthetic = true;</code></pre>
+    </div>
+  </section>
+
+  <!-- Hacker News-like nested comments: each commtext is an independent block. -->
+  <table data-site-fixture="hacker-news"><tbody>
+    <tr class="athing comtr"><td><div class="commtext c00" data-fixture-id="hn-parent">A synthetic parent comment.</div></td></tr>
+    <tr class="athing comtr"><td><div class="commtext c00" data-fixture-id="hn-child">A synthetic nested child comment with <a href="#reply">reply metadata</a>.</div></td></tr>
+    <tr class="athing comtr"><td><div class="commtext c00" data-fixture-id="hn-link-only"><a href="#story">A linked-only comment</a></div></td></tr>
+  </tbody></table>
+</main>
