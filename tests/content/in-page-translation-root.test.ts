@@ -16,6 +16,15 @@ describe("页内译文 React 协调器", () => {
     expect(document.querySelectorAll("[data-web-translation-translation='root']")).toHaveLength(2);
   });
 
+  it("区分排队中的内容块与当前正在提交的内容块", async () => {
+    document.body.innerHTML = "<p id='source'>Source.</p>";
+    const renderer = mountInPageTranslation(document.querySelector<HTMLElement>("#source")!);
+    renderer.renderLoading("queued");
+
+    await vi.waitFor(() => expect(document.querySelector<HTMLElement>("[data-web-translation-translation='root']")?.shadowRoot?.textContent).toContain("排队中…"));
+    expect(document.querySelector<HTMLElement>("[data-web-translation-translation='root']")?.shadowRoot?.querySelector("[data-status='queued']")).toBeTruthy();
+  });
+
   it("预算耗尽状态提供直接打开设置页的操作", async () => {
     document.body.innerHTML = "<p id='source'>Source.</p>";
     const openSettings = vi.fn();

@@ -49,6 +49,7 @@ export function translationSenderScope(sender: TranslationSender, sessionId: str
 
 export function createTranslationMessageHandler(dependencies: TranslationMessageHandlerDependencies) {
   const successfulPageResults = new Map<string, TranslationResult & { ok: true }>();
+  const inFlightPageResults = new Map<string, Promise<TranslationResult>>();
   const documentByFrame = new Map<string, string>();
   const scopesByTab = new Map<number, Set<string>>();
   const rememberScope = (sender: TranslationSender, scope: string | undefined): void => {
@@ -66,6 +67,7 @@ export function createTranslationMessageHandler(dependencies: TranslationMessage
   };
   const forgetDocument = (documentId: string) => {
     for (const key of successfulPageResults.keys()) if (key.startsWith(`${documentId}\u0000`)) successfulPageResults.delete(key);
+    for (const key of inFlightPageResults.keys()) if (key.startsWith(`${documentId}\u0000`)) inFlightPageResults.delete(key);
   };
   const reuseKey = (message: TranslationMessage, sender: TranslationSender): string | undefined => {
     if (typeof sender.documentId !== "string" || !sender.documentId) return undefined;
@@ -107,31 +109,37 @@ export function createTranslationMessageHandler(dependencies: TranslationMessage
       const key = reuseKey(message, sender);
       const cached = key ? successfulPageResults.get(key) : undefined;
       if (cached) return { ok: true, requestId: message.payload.requestId, blockId: message.payload.blockId, output: cached.output };
-      if (dependencies.scheduler) {
-        if (!scope) return failed(message);
-        const result = await dependencies.scheduler.enqueue(message.payload, {
-          scope,
-          validate: () => authorized(message, sender),
-          preflight: dependencies.preflight ? (identity) => dependencies.preflight!(sender, identity, message.session, message.payload.targetLanguage) : undefined,
-        });
-        if (key && result.ok) successfulPageResults.set(key, result);
-        return result;
+      const shared = key ? inFlightPageResults.get(key) : undefined;
+      const pending = shared ?? (async (): Promise<TranslationResult> => {
+        if (dependencies.scheduler) {
+          if (!scope) return failed(message);
+          return dependencies.scheduler.enqueue(message.payload, {
+            scope,
+            validate: () => authorized(message, sender),
+            preflight: dependencies.preflight ? (identity) => dependencies.preflight!(sender, identity, message.session, message.payload.targetLanguage) : undefined,
+          });
+        }
+        try {
+          const adapterOutput = await dependencies.adapter.translate(message.payload);
+          return {
+            ok: true as const,
+            requestId: message.payload.requestId,
+            blockId: message.payload.blockId,
+            output: { ...adapterOutput, adapter: dependencies.adapter.id, adapterVersion: dependencies.adapter.version },
+          };
+        } catch (error) {
+          return error instanceof TranslationAdapterError
+            ? { ok: false, requestId: message.payload.requestId, blockId: message.payload.blockId, error: error.failure.error }
+            : failed(message);
+        }
+      })();
+      if (key && !shared) inFlightPageResults.set(key, pending);
+      const result = await pending;
+      if (key && !shared) {
+        if (result.ok) successfulPageResults.set(key, result);
+        inFlightPageResults.delete(key);
       }
-      try {
-        const adapterOutput = await dependencies.adapter.translate(message.payload);
-        const result = {
-          ok: true as const,
-          requestId: message.payload.requestId,
-          blockId: message.payload.blockId,
-          output: { ...adapterOutput, adapter: dependencies.adapter.id, adapterVersion: dependencies.adapter.version },
-        };
-        if (key) successfulPageResults.set(key, result);
-        return result;
-      } catch (error) {
-        return error instanceof TranslationAdapterError
-          ? { ok: false, requestId: message.payload.requestId, blockId: message.payload.blockId, error: error.failure.error }
-          : failed(message);
-      }
+      return { ...result, requestId: message.payload.requestId, blockId: message.payload.blockId };
     },
     clearPageReuse(tabId: number): void {
       for (const [frame, documentId] of documentByFrame) {
@@ -173,6 +181,7 @@ export function createTranslationMessageHandler(dependencies: TranslationMessage
       scopesByTab.clear();
       documentByFrame.clear();
       successfulPageResults.clear();
+      inFlightPageResults.clear();
     },
   };
 }

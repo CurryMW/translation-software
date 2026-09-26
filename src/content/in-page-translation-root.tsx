@@ -6,7 +6,7 @@ import { BAIDU_MVP_LANGUAGES, type BaiduLanguageCode } from "../shared/languages
 import { isTranslationTextColorId, translationTextColorOption, type TranslationTextColorId } from "../shared/translation-appearance";
 
 interface Renderer {
-  renderLoading(): void;
+  renderLoading(status?: "queued" | "active"): void;
   renderSuccess(output: TranslationOutput, onRetry?: (sourceLanguage: BaiduLanguageCode) => void): void;
   renderManualSourceLanguage(targetLanguage: BaiduLanguageCode, onRetry: (sourceLanguage: BaiduLanguageCode) => void): void;
   renderBudgetExhausted(onOpenSettings: () => void): void;
@@ -25,7 +25,7 @@ interface TranslationEntry {
   id: number;
   slot: HTMLElement;
   state:
-    | { kind: "loading" }
+    | { kind: "loading"; status: "queued" | "active" }
     | { kind: "success"; output: TranslationOutput; onRetry?: (sourceLanguage: BaiduLanguageCode) => void }
     | { kind: "manual"; targetLanguage: BaiduLanguageCode; onRetry: (sourceLanguage: BaiduLanguageCode) => void }
     | { kind: "budget-exhausted"; onOpenSettings: () => void }
@@ -63,6 +63,7 @@ function TranslationView({ state, textColor }: { state: TranslationEntry["state"
         .translation { color: ${color.light}; color-scheme: light dark; font: 14px/1.5 system-ui, sans-serif; margin: 0.55rem 0 0; padding: 0.55rem 0.75rem; border-left: 3px solid ${color.light}; background: color-mix(in srgb, ${color.light} 8%, transparent); border-radius: 0 0.45rem 0.45rem 0; }
         .translation__toggle { background: none; border: 0; color: #0969da; cursor: pointer; font: inherit; padding: 0; text-decoration: underline; }
         .translation__text { color: inherit; margin: 0; white-space: pre-wrap; }
+        .translation__loading[data-status='queued'] { opacity: 0.72; }
         @media (prefers-color-scheme: dark) {
           .translation { color: ${color.dark}; border-left-color: ${color.dark}; background: color-mix(in srgb, ${color.dark} 11%, transparent); }
           .translation__toggle { color: #58a6ff; }
@@ -79,7 +80,7 @@ function TranslationView({ state, textColor }: { state: TranslationEntry["state"
             </select>
           </label>
           <button className="translation__toggle" type="button" onClick={() => state.onRetry(selectableManualSource(state.targetLanguage))}>翻译此内容块</button>
-        </div> : state.kind === "budget-exhausted" ? <div><span>已达到本扩展估算的月度字符预算。</span><button className="translation__toggle" type="button" onClick={state.onOpenSettings}>打开设置并调整预算</button></div> : state.kind === "text-too-long" ? <span>此内容块包含无法安全拆分的超长句子，未发送翻译请求。</span> : state.kind === "failure" ? <div><span>{failureMessage(state.error)}</span>{state.onRetry ? <button className="translation__toggle" type="button" onClick={state.onRetry}>重试此内容块</button> : null}</div> : state.kind === "paused" ? null : state.kind === "skipped" ? <span>原文已是目标语言，无需翻译。</span> : <span className="translation__loading">正在翻译…</span>}
+        </div> : state.kind === "budget-exhausted" ? <div><span>已达到本扩展估算的月度字符预算。</span><button className="translation__toggle" type="button" onClick={state.onOpenSettings}>打开设置并调整预算</button></div> : state.kind === "text-too-long" ? <span>此内容块包含无法安全拆分的超长句子，未发送翻译请求。</span> : state.kind === "failure" ? <div><span>{failureMessage(state.error)}</span>{state.onRetry ? <button className="translation__toggle" type="button" onClick={state.onRetry}>重试此内容块</button> : null}</div> : state.kind === "paused" ? null : state.kind === "skipped" ? <span>原文已是目标语言，无需翻译。</span> : <span className="translation__loading" data-status={state.status}>{state.status === "queued" ? "排队中…" : "正在翻译…"}</span>}
       </section>
     </>
   );
@@ -276,7 +277,7 @@ export function mountInPageTranslation(target: HTMLElement): Renderer {
   let active = true;
   const render = (state: TranslationEntry["state"]) => coordinator.set(target, { slot, state });
   const renderer: Renderer = {
-    renderLoading: () => { if (active) render({ kind: "loading" }); },
+    renderLoading: (status = "active") => { if (active) render({ kind: "loading", status }); },
     renderSuccess: (output, onRetry) => { if (active) render({ kind: "success", output, onRetry }); },
     renderManualSourceLanguage: (targetLanguage, onRetry) => { if (active) render({ kind: "manual", targetLanguage, onRetry }); },
     renderBudgetExhausted: (onOpenSettings) => { if (active) render({ kind: "budget-exhausted", onOpenSettings }); },

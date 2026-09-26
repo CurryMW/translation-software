@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { createTranslationMessageHandler, translationSenderScope } from "../../src/background/translation-message-handler";
 import type { TranslationMessage } from "../../src/shared/messages";
 import { createTranslationScheduler } from "../../src/background/translation-scheduler";
-import { TranslationAdapterError, TRANSLATION_PROVIDER_ERROR_CODES } from "../../src/shared/translation";
+import { TranslationAdapterError, TRANSLATION_PROVIDER_ERROR_CODES, type TranslationAdapterOutput } from "../../src/shared/translation";
 
 const message = { type: "translation.translate", session: { id: "stay-1" }, payload: { requestId: "request", blockId: "block", text: "Visible source.", sourceLanguage: "auto", targetLanguage: "zh" } } satisfies TranslationMessage;
 
@@ -91,6 +91,37 @@ describe("翻译消息授权边界", () => {
     await expect(handler.handle({ ...message, payload: { ...message.payload, requestId: "jp-task", blockId: "jp-task", targetLanguage: "jp" } }, sender)).resolves.toMatchObject({ ok: true });
     expect(permitsSession).toHaveBeenNthCalledWith(1, sender, "stay-1", "zh");
     expect(permitsSession).toHaveBeenNthCalledWith(2, sender, "stay-1", "jp");
+    expect(translate).toHaveBeenCalledOnce();
+  });
+
+  it("同一 document 内并发提交相同文本时只发起一次供应商请求", async () => {
+    const releases: Array<(output: { translatedText: string; sourceLanguage: "auto"; targetLanguage: "zh"; adapter: "fake" }) => void> = [];
+    const translate = vi.fn(() => new Promise<TranslationAdapterOutput>((resolve) => { releases.push(resolve); }));
+    const scheduler = createTranslationScheduler({
+      adapter: { id: "fake", version: "test-v1", translate },
+      usage: {
+        snapshot: vi.fn().mockResolvedValue({ settings: { plan: "advanced", monthlyCharacterBudget: 100 }, periodKey: "2026-09", submittedCharacters: 0, remainingCharacters: 100 }),
+        reserveBeforeSubmit: vi.fn().mockResolvedValue({ ok: true, snapshot: { periodKey: "2026-09" } }),
+        releaseReservedCharacters: vi.fn(),
+      },
+    });
+    const handler = createTranslationMessageHandler({
+      adapter: { id: "fake", version: "test-v1", translate },
+      scheduler,
+      hasHostPermission: vi.fn().mockResolvedValue(true),
+      isDomainEnabled: vi.fn().mockResolvedValue(true),
+      permitsSession: permittedSession(),
+    });
+    const sender = { tab: { id: 1 }, frameId: 0, documentId: "document-a", url: "https://article.example.test/" };
+    const first = handler.handle({ ...message, payload: { ...message.payload, requestId: "same-text-a", blockId: "same-text-a" } }, sender);
+    const second = handler.handle({ ...message, payload: { ...message.payload, requestId: "same-text-b", blockId: "same-text-b" } }, sender);
+
+    await vi.waitFor(() => expect(translate).toHaveBeenCalledOnce());
+    releases.forEach((release) => release({ translatedText: "固定译文", sourceLanguage: "auto", targetLanguage: "zh", adapter: "fake" }));
+    await expect(Promise.all([first, second])).resolves.toMatchObject([
+      { ok: true, requestId: "same-text-a", blockId: "same-text-a", output: { translatedText: "固定译文" } },
+      { ok: true, requestId: "same-text-b", blockId: "same-text-b", output: { translatedText: "固定译文" } },
+    ]);
     expect(translate).toHaveBeenCalledOnce();
   });
 

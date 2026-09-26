@@ -321,11 +321,6 @@ export function createTranslationScheduler({ adapter, usage, diagnostics, submis
             const snapshot = await usage.snapshot();
             const fragments = splitAtSafeBoundaries(task.text, BAIDU_PLAN_LIMITS[snapshot.settings.plan].safeRequestCharacters);
             if (!fragments) return fail(parent, "TEXT_TOO_LONG");
-            if (checks.validate && !await checks.validate()) return fail(parent, "SESSION_UNAVAILABLE");
-            if (checks.preflight) {
-              const preflight = await checks.preflight({ requestId: task.requestId, blockId: task.blockId });
-              if (!preflight.ok) return fail(parent, "CANCELED");
-            }
             if (parent.canceled || parent.settled) return;
             parent.remaining = fragments.length;
             pending.push(...fragments.map((fragment, index) => ({ parent, path: [index], ...fragment })));

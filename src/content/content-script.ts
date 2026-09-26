@@ -470,7 +470,11 @@ function submitTranslation(
   const requestId = nextRequestId();
   active.requestId = requestId;
   active.pending = true;
-  active.renderer.renderLoading();
+  // The worker enforces the account's QPS globally. When another visible
+  // block is already unresolved, this task is queued rather than actively
+  // submitted; showing that distinction prevents a QPS-1 plan from looking
+  // like many requests are progressing at the same time.
+  active.renderer.renderLoading(state.pendingRequestIds.size > 0 ? "queued" : "active");
   const task = { requestId, blockId: active.blockId, text: candidate.text, sourceLanguage, targetLanguage };
   state.pendingRequestIds.add(requestId);
   void chrome.runtime.sendMessage({ type: TRANSLATION_MESSAGE_TYPES.translate, session: { id: session.id }, payload: task }).then((result: TranslationMessageResponse) => {

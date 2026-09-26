@@ -34,7 +34,7 @@ describe("可视翻译调度行为", () => {
     });
     expect(translate).toHaveBeenCalledTimes(3);
     expect(reserveBeforeSubmit).toHaveBeenCalledTimes(3);
-    expect(preflight).toHaveBeenCalledTimes(5);
+    expect(preflight).toHaveBeenCalledTimes(4);
     expect(waits).toEqual([250, 500]);
   });
 
@@ -324,7 +324,7 @@ describe("可视翻译调度行为", () => {
   it("预留结束后若授权或会话已失效，会回滚预算且不提交适配器", async () => {
     const translate = vi.fn();
     const releaseReservedCharacters = vi.fn().mockResolvedValue(undefined);
-    const validate = vi.fn().mockResolvedValueOnce(true).mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+    const validate = vi.fn().mockResolvedValueOnce(true).mockResolvedValueOnce(false);
     const scheduler = createTranslationScheduler({
       adapter: { id: "fake", version: "test-v1", translate },
       usage: { snapshot: vi.fn().mockResolvedValue({ settings: { plan: "advanced", monthlyCharacterBudget: 10 }, periodKey: "2026-09", submittedCharacters: 0, remainingCharacters: 10 }), reserveBeforeSubmit: vi.fn().mockResolvedValue({ ok: true, snapshot: { periodKey: "2026-09" } }), releaseReservedCharacters },
